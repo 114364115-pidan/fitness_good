@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Quiet Fit — 質感微可視化健身追蹤</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            page: '#F8FAFC',
+            card: '#FFFFFF',
+            subtle: '#E2E8F0',
+            main: '#1E293B',
+            muted: '#64748B',
+            workout: '#10B981',
+            diet: '#F59E0B',
+            water: '#0EA5E9',
+            perfectBg: '#F0FDF4',
+            perfectBorder: '#10B981',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-page:        #F8FAFC;
+      --bg-card:        #FFFFFF;
+      --border-subtle:  #E2E8F0;
+      --text-main:      #1E293B;
+      --text-muted:     #64748B;
+      --color-workout:  #10B981;
+      --color-diet:     #F59E0B;
+      --color-water:    #0EA5E9;
+      --perfect-bg:     #F0FDF4;
+      --perfect-border: #10B981;
+    }
+
+    body {
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      -webkit-tap-highlight-color: transparent;
+      scroll-behavior: smooth;
+    }
+
+    /* 低調安靜的成就感 (Quiet Feedback) 微光與過渡效果 */
+    .quiet-transition {
+      transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .subtle-glow-workout {
+      box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), 0 4px 14px -2px rgba(16, 185, 129, 0.12);
+    }
+
+    .subtle-glow-diet {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.25), 0 4px 14px -2px rgba(245, 158, 11, 0.12);
+    }
+
+    .subtle-glow-water {
+      box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.25), 0 4px 14px -2px rgba(14, 165, 233, 0.12);
+    }
+
+    /* Perfect Day 完美日樣式 */
+    .perfect-day-cell {
+      background-color: var(--perfect-bg) !important;
+      border: 1.5px solid var(--perfect-border) !important;
+    }
+
+    /* 隱藏捲軸但保留滑動功能 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-emerald-100 selection:text-emerald-800 pb-16">
+
+  <!-- 手機優先主容器 (max-w-md) -->
+  <div class="max-w-md mx-auto min-h-screen flex flex-col px-4 pt-5 pb-12 space-y-5">
+
+    <!-- 頂部導覽與個人狀態列 -->
+    <header class="flex items-center justify-between pt-1">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-workout"></span>
+          <p class="text-xs font-medium tracking-wider uppercase text-muted">Minimalist Slate & Sage</p>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight text-main mt-0.5 flex items-center gap-1.5">
+          <span>早安，<span id="user-display-name">Jun-Ming</span></span>
+        </h1>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- 每日專注提醒觸發按鈕 -->
+        <button id="btn-open-focus" onclick="openFocusModal()" class="relative p-2.5 rounded-xl bg-card border border-subtle text-main hover:border-emerald-300 quiet-transition shadow-sm" title="今日專注提醒">
+          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-600"></i>
+          <span id="focus-badge-dot" class="hidden absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full ring-2 ring-white"></span>
+        </button>
+        <!-- 設定按鈕 -->
+        <button onclick="openSettingsModal()" class="p-2.5 rounded-xl bg-card border border-subtle text-muted hover:text-main hover:border-slate-300 quiet-transition shadow-sm" title="個人目標設定">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 3.3 週肌群平衡指標 (Weekly Muscle Group Balance) -->
+    <section class="bg-card rounded-2xl border border-subtle p-4 shadow-sm quiet-transition" id="weekly-balance-card">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i>
+          <h2 class="text-sm font-semibold text-main">週肌群平衡指標</h2>
+        </div>
+        <span id="weekly-balance-status" class="text-xs font-medium text-muted bg-slate-100 px-2.5 py-1 rounded-full quiet-transition">
+          本週已完成 0/5 部位訓練
+        </span>
+      </div>
+
+      <!-- 橫向膠囊標籤 (Badges) -->
+      <div id="weekly-muscle-badges" class="grid grid-cols-5 gap-2">
+        <!-- 由 JS 動態渲染：胸、背、腿、肩臂、核心 -->
+      </div>
+
+      <!-- 全肌群達成標記 -->
+      <div id="weekly-all-clear-banner" class="hidden mt-3 pt-2.5 border-t border-emerald-100 flex items-center justify-between text-xs text-emerald-700">
+        <span class="flex items-center gap-1.5 font-medium">
+          <i data-lucide="award" class="w-4 h-4 text-emerald-500"></i>
+          本週五大肌群全數達成平衡！
+        </span>
+        <span class="text-[11px] text-emerald-600/80">Quiet Balance Achieved</span>
+      </div>
+    </section>
+
+    <!-- 3.5 精緻月曆可視化 (Calendar View) -->
+    <section class="bg-card rounded-2xl border border-subtle p-4 shadow-sm">
+      <!-- 月曆頂部切換與圖例 -->
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-1">
+          <button onclick="changeMonth(-1)" class="p-1.5 rounded-lg hover:bg-slate-100 text-muted hover:text-main quiet-transition" aria-label="上個月">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <h2 id="calendar-month-label" class="text-sm font-bold text-main px-1.5">2026年 10月</h2>
+          <button onclick="changeMonth(1)" class="p-1.5 rounded-lg hover:bg-slate-100 text-muted hover:text-main quiet-transition" aria-label="下個月">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2.5 text-[11px] text-muted">
+          <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-workout inline-block"></i>運動</span>
+          <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-diet inline-block"></i>飲食</span>
+          <span class="flex items-center gap-1"><i class="w-1.5 h-1.5 rounded-full bg-water inline-block"></i>飲水</span>
+        </div>
+      </div>
+
+      <!-- 星期標題列 (週一至週日) -->
+      <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted mb-1.5">
+        <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+      </div>
+
+      <!-- 日曆格子容器 -->
+      <div id="calendar-grid" class="grid grid-cols-7 gap-1.5">
+        <!-- 由 JS 動態渲染 -->
+      </div>
+
+      <!-- 歷史回顧與當日摘要列 -->
+      <div class="mt-3.5 pt-3 border-t border-subtle flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span id="selected-date-title" class="text-xs font-semibold text-main">10月18日 (今日)</span>
+          <span id="selected-date-perfect-tag" class="hidden text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+            ✦ Perfect Day
+          </span>
+        </div>
+        <button id="btn-jump-today" onclick="selectToday()" class="hidden text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+          <span>回到今日</span>
+          <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+        </button>
+      </div>
+
+      <!-- 所選日期的微回顧摘要 -->
+      <div id="selected-date-summary" class="mt-2 text-xs text-muted bg-slate-50/80 rounded-xl p-2.5 border border-slate-100">
+        <!-- 由 JS 動態更新該日完成摘要 -->
+      </div>
+    </section>
+
+    <!-- 今日打卡主區域錨點 -->
+    <div id="checkin-section-anchor" class="space-y-5">
+
+      <!-- 3.2 健身部位與影片打卡 (Workout Tracking) -->
+      <section id="workout-card" class="bg-card rounded-2xl border border-subtle p-4 shadow-sm quiet-transition">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-workout"></span>
+            <h2 class="text-sm font-semibold text-main">部位訓練與影片打卡</h2>
+            <span id="workout-status-badge" class="text-[11px] text-muted bg-slate-100 px-2 py-0.5 rounded-full">未打卡</span>
+          </div>
+          <button onclick="openVideoModal()" class="text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100/70 px-2.5 py-1.5 rounded-xl flex items-center gap-1 quiet-transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>新增影片</span>
+          </button>
+        </div>
+
+        <!-- 部位分類篩選器 -->
+        <div id="category-filter-bar" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-2.5">
+          <!-- 由 JS 動態渲染：全部、胸、背、腿、肩臂、核心、全身有氧 -->
+        </div>
+
+        <!-- 影片清單容器 -->
+        <div id="video-list-container" class="space-y-2.5">
+          <!-- 由 JS 動態渲染影片卡片 -->
+        </div>
+      </section>
+
+      <!-- 3.4 飲食與水分習慣追蹤 (Diet & Water Tracking) -->
+      <div class="grid grid-cols-1 gap-4">
+
+        <!-- 飲食檢核清單卡片 -->
+        <section id="diet-card" class="bg-card rounded-2xl border border-subtle p-4 shadow-sm quiet-transition">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-diet"></span>
+              <h2 class="text-sm font-semibold text-main">飲食自律清單</h2>
+            </div>
+            <span id="diet-progress-badge" class="text-xs font-medium text-muted bg-slate-100 px-2.5 py-0.5 rounded-full quiet-transition">
+              0/3 完成
+            </span>
+          </div>
+
+          <div id="diet-list-container" class="space-y-2">
+            <!-- 由 JS 動態渲染飲食檢核項目 -->
+          </div>
+
+          <!-- 快速新增飲食原則 -->
+          <form onsubmit="handleAddDietItem(event)" class="mt-3 pt-2.5 border-t border-subtle flex items-center gap-2">
+            <input
+              type="text"
+              id="new-diet-item-input"
+              placeholder="新增飲食原則（例：晚餐不吃精緻澱粉）..."
+              class="flex-1 text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2 text-main placeholder:text-muted focus:outline-none focus:border-amber-400 quiet-transition"
+            />
+            <button type="submit" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-amber-50 text-xs font-medium text-main hover:text-amber-700 quiet-transition">
+              新增
+            </button>
+          </form>
+        </section>
+
+        <!-- 水分追蹤卡片 -->
+        <section id="water-card" class="bg-card rounded-2xl border border-subtle p-4 shadow-sm quiet-transition">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-water"></span>
+              <h2 class="text-sm font-semibold text-main">每日水分攝取</h2>
+            </div>
+            <button onclick="openSettingsModal()" class="text-xs text-muted hover:text-main flex items-center gap-1">
+              <span>目標：<strong id="water-target-display" class="font-semibold text-main">2000</strong> ml</span>
+              <i data-lucide="edit-3" class="w-3 h-3"></i>
+            </button>
+          </div>
+
+          <!-- 一鍵打勾按鈕 -->
+          <button
+            id="btn-water-toggle"
+            onclick="toggleWaterCheck()"
+            class="w-full py-3.5 px-4 rounded-xl border border-subtle bg-slate-50/70 hover:bg-sky-50/50 flex items-center justify-between quiet-transition group"
+          >
+            <div class="flex items-center gap-3">
+              <div id="water-check-icon-box" class="w-6 h-6 rounded-lg border border-slate-300 bg-white flex items-center justify-center text-white quiet-transition">
+                <i data-lucide="droplets" class="w-3.5 h-3.5 text-sky-500" id="water-icon-inner"></i>
+              </div>
+              <div class="text-left">
+                <p id="water-btn-title" class="text-sm font-semibold text-main">今日水分已達標（2000ml）</p>
+                <p id="water-btn-subtitle" class="text-[11px] text-muted">點擊一鍵完成今日飲水打卡</p>
+              </div>
+            </div>
+            <span id="water-status-pill" class="text-xs font-medium text-muted bg-white border border-subtle px-2.5 py-1 rounded-lg quiet-transition">
+              待達成
+            </span>
+          </button>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- 底部極簡標語 -->
+    <footer class="pt-4 text-center text-[11px] text-muted space-y-1">
+      <p>Quiet Consistency • 專注於微小的日常累積</p>
+      <button onclick="resetDemoData()" class="underline hover:text-main">重置為預設示範資料</button>
+    </footer>
+
+  </div>
+
+  <!-- ==========================================
+       3.1 每日專注提醒彈窗 (Daily Focus Modal)
+       ========================================== -->
+  <div id="daily-focus-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px] animate-fade-in">
+    <div class="bg-card w-full max-w-sm rounded-2xl border border-subtle p-5 shadow-lg space-y-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <span id="modal-today-date" class="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+            2026年10月18日
+          </span>
+          <h3 id="modal-focus-slogan" class="text-base font-bold text-main mt-2.5">
+            今天專注：【背部與核心強化】
+          </h3>
+        </div>
+        <button onclick="dismissFocusModal()" class="p-1.5 text-muted hover:text-main rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- 今日三大維度完成進度摘要 -->
+      <div class="bg-slate-50 rounded-xl p-3.5 border border-slate-100 space-y-2.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-muted font-medium">今日三大維度完成進度</span>
+          <span id="modal-progress-fraction" class="font-bold text-main">0 / 3 完成</span>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <div id="modal-pill-workout" class="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white border border-subtle text-xs text-muted">
+            <span class="w-2 h-2 rounded-full bg-slate-300" id="modal-dot-workout"></span>
+            <span>運動</span>
+          </div>
+          <div id="modal-pill-diet" class="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white border border-subtle text-xs text-muted">
+            <span class="w-2 h-2 rounded-full bg-slate-300" id="modal-dot-diet"></span>
+            <span>飲食</span>
+          </div>
+          <div id="modal-pill-water" class="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white border border-subtle text-xs text-muted">
+            <span class="w-2 h-2 rounded-full bg-slate-300" id="modal-dot-water"></span>
+            <span>飲水</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 今日預排影片標題預覽 -->
+      <div class="space-y-1.5">
+        <p class="text-xs font-medium text-muted">今日推薦 / 預排訓練清單：</p>
+        <div id="modal-video-preview-list" class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+          <!-- 由 JS 渲染 -->
+        </div>
+      </div>
+
+      <!-- 操作按鈕 -->
+      <div class="grid grid-cols-2 gap-2.5 pt-2">
+        <button onclick="dismissFocusModal()" class="py-2.5 px-4 rounded-xl border border-subtle text-xs font-medium text-muted hover:text-main hover:bg-slate-50 quiet-transition">
+          稍後提醒
+        </button>
+        <button onclick="startTodayWorkoutFromModal()" class="py-2.5 px-4 rounded-xl bg-workout hover:bg-emerald-600 text-xs font-semibold text-white shadow-sm quiet-transition flex items-center justify-center gap-1.5">
+          <span>開始今日訓練</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       新增 / 編輯訓練影片彈窗 (Video CRUD Modal)
+       ========================================== -->
+  <div id="video-crud-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]">
+    <div class="bg-card w-full max-w-sm rounded-2xl border border-subtle p-5 shadow-lg space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="video-modal-title" class="text-base font-bold text-main">新增訓練影片</h3>
+        <button onclick="closeVideoModal()" class="p-1.5 text-muted hover:text-main rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="video-crud-form" onsubmit="handleSaveVideo(event)" class="space-y-3.5">
+        <input type="hidden" id="video-id-input" />
+
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">影片標題</label>
+          <input
+            type="text"
+            id="video-title-input"
+            required
+            placeholder="例：20分鐘無器械背部雕塑訓練"
+            class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">所屬肌群部位</label>
+            <select
+              id="video-category-input"
+              class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+            >
+              <option value="胸">胸 (Chest)</option>
+              <option value="背">背 (Back)</option>
+              <option value="腿">腿 (Legs)</option>
+              <option value="肩臂">肩臂 (Arms/Shoulders)</option>
+              <option value="核心">核心 (Core)</option>
+              <option value="全身有氧">全身有氧 (Cardio)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-muted mb-1">預估時長 (分鐘)</label>
+            <input
+              type="number"
+              id="video-duration-input"
+              min="1"
+              max="240"
+              required
+              value="20"
+              class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">外部影片連結 (YouTube / Bilibili)</label>
+          <input
+            type="url"
+            id="video-url-input"
+            required
+            placeholder="https://www.youtube.com/watch?v=..."
+            class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeVideoModal()" class="py-2 px-4 rounded-xl border border-subtle text-xs font-medium text-muted hover:text-main">
+            取消
+          </button>
+          <button type="submit" class="py-2 px-4 rounded-xl bg-workout hover:bg-emerald-600 text-xs font-semibold text-white">
+            儲存影片
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       個人設定彈窗 (Settings Modal)
+       ========================================== -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[2px]">
+    <div class="bg-card w-full max-w-sm rounded-2xl border border-subtle p-5 shadow-lg space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-main">個人目標與偏好設定</h3>
+        <button onclick="closeSettingsModal()" class="p-1.5 text-muted hover:text-main rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleSaveSettings(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">顯示暱稱</label>
+          <input
+            type="text"
+            id="setting-name-input"
+            required
+            class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">每日飲水目標 (ml)</label>
+          <input
+            type="number"
+            id="setting-water-input"
+            step="100"
+            min="500"
+            max="6000"
+            required
+            class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-sky-500"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-muted mb-1">今日專注標語</label>
+          <input
+            type="text"
+            id="setting-focus-input"
+            placeholder="例：今天專注：【背部與核心強化】"
+            required
+            class="w-full text-xs bg-slate-50 border border-subtle rounded-xl px-3 py-2.5 text-main focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeSettingsModal()" class="py-2 px-4 rounded-xl border border-subtle text-xs font-medium text-muted hover:text-main">
+            取消
+          </button>
+          <button type="submit" class="py-2 px-4 rounded-xl bg-main hover:bg-slate-700 text-xs font-semibold text-white">
+            儲存設定
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       JavaScript 核心狀態與互動邏輯
+       ========================================== -->
+  <script>
+    const STORAGE_KEY = 'QUIET_FIT_PRD_STATE_V1';
+    const FOCUS_DISMISSED_KEY = 'QUIET_FIT_FOCUS_DISMISSED_SESSION';
+
+    const ALL_CATEGORIES = ['全部', '胸', '背', '腿', '肩臂', '核心', '全身有氧'];
+    const WEEKLY_TARGET_PARTS = ['胸', '背', '腿', '肩臂', '核心'];
+
+    // 取得本地 YYYY-MM-DD 字串
+    function formatDateKey(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    // 獲取今日日期與當週日期輔助函式
+    const todayObj = new Date();
+    const todayKey = formatDateKey(todayObj);
+
+    function getOffsetDateKey(daysOffset) {
+      const d = new Date(todayObj);
+      d.setDate(d.getDate() + daysOffset);
+      return formatDateKey(d);
+    }
+
+    // 建立符合 PRD 第 5 節 Schema 的預設資料
+    function getDefaultState() {
+      const twoDaysAgo = getOffsetDateKey(-2);
+      const yesterday = getOffsetDateKey(-1);
+
+      return {
+        user: {
+          profile: {
+            displayName: 'Jun-Ming',
+            avatarUrl: '',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          settings: {
+            waterTargetMl: 2000,
+            focusSlogan: '今天專注：【背部與核心強化】',
+            defaultDietList: [
+              '攝取足量蛋白質',
+              '未飲用含糖手搖飲',
+              '至少吃一份深綠色蔬菜'
+            ],
+            weeklyTargetParts: ['胸', '背', '腿', '肩臂', '核心']
+          }
+        },
+        videos: [
+          {
+            id: 'vid_001',
+            title: '20分鐘無器械背部雕塑訓練',
+            category: '背',
+            durationMin: 20,
+            externalUrl: 'https://www.youtube.com/results?search_query=20+min+back+workout',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          {
+            id: 'vid_002',
+            title: '15分鐘高效率核心穩定與腹肌喚醒',
+            category: '核心',
+            durationMin: 15,
+            externalUrl: 'https://www.youtube.com/results?search_query=15+min+core+workout',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          {
+            id: 'vid_003',
+            title: '25分鐘居家胸肌與伏地挺身進階變化',
+            category: '胸',
+            durationMin: 25,
+            externalUrl: 'https://www.youtube.com/results?search_query=home+chest+workout',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          {
+            id: 'vid_004',
+            title: '30分鐘臀腿肌群深蹲與燃脂訓練',
+            category: '腿',
+            durationMin: 30,
+            externalUrl: 'https://www.youtube.com/results?search_query=30+min+leg+workout',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          {
+            id: 'vid_005',
+            title: '15分鐘啞鈴肩頸線條與手臂緊實',
+            category: '肩臂',
+            durationMin: 15,
+            externalUrl: 'https://www.youtube.com/results?search_query=shoulder+arm+dumbbell+workout',
+            createdAt: '2026-10-16T08:00:00Z'
+          },
+          {
+            id: 'vid_006',
+            title: '20分鐘低衝擊全身有氧燃脂律動',
+            category: '全身有氧',
+            durationMin: 20,
+            externalUrl: 'https://www.youtube.com/results?search_query=20+min+low+impact+cardio',
+            createdAt: '2026-10-16T08:00:00Z'
+          }
+        ],
+        logs: {
+          [twoDaysAgo]: {
+            date: twoDaysAgo,
+            workout: {
+              isCompleted: true,
+              completedVideoIds: ['vid_003', 'vid_005'],
+              trainedCategories: ['胸', '肩臂']
+            },
+            diet: {
+              isCompleted: true,
+              checkedItems: [
+                '攝取足量蛋白質',
+                '未飲用含糖手搖飲',
+                '至少吃一份深綠色蔬菜'
+              ]
+            },
+            water: {
+              isCompleted: true,
+              targetMl: 2000
+            },
+            isPerfectDay: true,
+            updatedAt: new Date().toISOString()
+          },
+          [yesterday]: {
+            date: yesterday,
+            workout: {
+              isCompleted: true,
+              completedVideoIds: ['vid_004'],
+              trainedCategories: ['腿']
+            },
+            diet: {
+              isCompleted: false,
+              checkedItems: ['攝取足量蛋白質', '至少吃一份深綠色蔬菜']
+            },
+            water: {
+              isCompleted: true,
+              targetMl: 2000
+            },
+            isPerfectDay: false,
+            updatedAt: new Date().toISOString()
+          }
+        }
+      };
+    }
+
+    // 應用程式狀態
+    let appState = loadState();
+    let selectedDateKey = todayKey;
+    let currentCalendarYear = todayObj.getFullYear();
+    let currentCalendarMonth = todayObj.getMonth(); // 0-indexed
+    let activeCategoryFilter = '全部';
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return getDefaultState();
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error('Failed to load state:', e);
+        return getDefaultState();
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+    // 確保某日的 log 結構存在且同步最新判斷
+    function ensureDayLog(dateKey) {
+      if (!appState.logs[dateKey]) {
+        appState.logs[dateKey] = {
+          date: dateKey,
+          workout: {
+            isCompleted: false,
+            completedVideoIds: [],
+            trainedCategories: []
+          },
+          diet: {
+            isCompleted: false,
+            checkedItems: []
+          },
+          water: {
+            isCompleted: false,
+            targetMl: appState.user.settings.waterTargetMl
+          },
+          isPerfectDay: false,
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      const log = appState.logs[dateKey];
+      const defaultDiet = appState.user.settings.defaultDietList || [];
+
+      // 重新計算運動完成狀態與訓練部位
+      const validCompletedIds = log.workout.completedVideoIds.filter(id =>
+        appState.videos.some(v => v.id === id)
+      );
+      log.workout.completedVideoIds = validCompletedIds;
+
+      const trainedSet = new Set();
+      validCompletedIds.forEach(id => {
+        const v = appState.videos.find(item => item.id === id);
+        if (v) trainedSet.add(v.category);
+      });
+      log.workout.trainedCategories = Array.from(trainedSet);
+      log.workout.isCompleted = validCompletedIds.length > 0;
+
+      // 重新計算飲食打卡狀態（所有清單項目全數完成時，判定飲食打卡成功）
+      log.diet.checkedItems = log.diet.checkedItems.filter(item => defaultDiet.includes(item));
+      log.diet.isCompleted = defaultDiet.length > 0 && log.diet.checkedItems.length === defaultDiet.length;
+
+      // 重新計算 Perfect Day (三項皆完成)
+      log.isPerfectDay = Boolean(
+        log.workout.isCompleted &&
+        log.diet.isCompleted &&
+        log.water.isCompleted
+      );
+
+      return log;
+    }
+
+    // ==========================================
+    // 3.3 週肌群平衡指標計算 (週一 00:00 至 週日 23:59)
+    // ==========================================
+    function getWeekDateKeys(referenceDateStr) {
+      const [y, m, d] = referenceDateStr.split('-').map(Number);
+      const ref = new Date(y, m - 1, d);
+      const dayOfWeek = ref.getDay(); // 0 (Sun) to 6 (Sat)
+      // 轉換為週一為起點 (Monday = 0 ... Sunday = 6)
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(ref);
+      monday.setDate(ref.getDate() + diffToMonday);
+
+      const keys = [];
+      for (let i = 0; i < 7; i++) {
+        const cur = new Date(monday);
+        cur.setDate(monday.getDate() + i);
+        keys.push(formatDateKey(cur));
+      }
+      return keys;
+    }
+
+    function renderWeeklyMuscleBalance() {
+      const weekKeys = getWeekDateKeys(selectedDateKey);
+      const trainedPartsThisWeek = new Set();
+
+      weekKeys.forEach(k => {
+        const log = appState.logs[k];
+        if (log && log.workout && log.workout.completedVideoIds) {
+          log.workout.completedVideoIds.forEach(vidId => {
+            const v = appState.videos.find(item => item.id === vidId);
+            if (v && WEEKLY_TARGET_PARTS.includes(v.category)) {
+              trainedPartsThisWeek.add(v.category);
+            }
+          });
+        }
+      });
+
+      const completedCount = trainedPartsThisWeek.size;
+      const totalParts = WEEKLY_TARGET_PARTS.length;
+
+      const statusEl = document.getElementById('weekly-balance-status');
+      statusEl.textContent = `本週已完成 ${completedCount}/${totalParts} 部位訓練`;
+
+      if (completedCount === totalParts) {
+        statusEl.className = 'text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full quiet-transition';
+        document.getElementById('weekly-all-clear-banner').classList.remove('hidden');
+        document.getElementById('weekly-balance-card').classList.add('subtle-glow-workout');
+      } else {
+        statusEl.className = 'text-xs font-medium text-muted bg-slate-100 px-2.5 py-1 rounded-full quiet-transition';
+        document.getElementById('weekly-all-clear-banner').classList.add('hidden');
+        document.getElementById('weekly-balance-card').classList.remove('subtle-glow-workout');
+      }
+
+      const partEnMap = {
+        '胸': 'Chest',
+        '背': 'Back',
+        '腿': 'Legs',
+        '肩臂': 'Arms',
+        '核心': 'Core'
+      };
+
+      const badgesContainer = document.getElementById('weekly-muscle-badges');
+      badgesContainer.innerHTML = WEEKLY_TARGET_PARTS.map(part => {
+        const isActive = trainedPartsThisWeek.has(part);
+        return `
+          <div class="flex flex-col items-center justify-center py-2 px-1.5 rounded-xl border quiet-transition ${
+            isActive
+              ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm'
+              : 'bg-slate-50 border-subtle text-muted'
+          }">
+            <span class="text-xs font-semibold">${part}</span>
+            <span class="text-[10px] ${isActive ? 'text-emerald-100' : 'text-slate-400'}">${partEnMap[part]}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 3.5 精緻月曆可視化 (3-Dot Matrix & Perfect Day)
+    // ==========================================
+    function renderCalendar() {
+      const monthLabel = document.getElementById('calendar-month-label');
+      monthLabel.textContent = `${currentCalendarYear}年 ${currentCalendarMonth + 1}月`;
+
+      const firstDayOfMonth = new Date(currentCalendarYear, currentCalendarMonth, 1);
+      const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+
+      // 轉換為週一為第一欄 (0=週一 ... 6=週日)
+      const startWeekday = (firstDayOfMonth.getDay() + 6) % 7;
+
+      const grid = document.getElementById('calendar-grid');
+      let cellsHtml = '';
+
+      // 前置空白格
+      for (let i = 0; i < startWeekday; i++) {
+        cellsHtml += `<div class="h-12 rounded-xl"></div>`;
+      }
+
+      // 日期格子
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(currentCalendarYear, currentCalendarMonth, day);
+        const dateKey = formatDateKey(dateObj);
+        const log = appState.logs[dateKey];
+
+        const hasWorkout = log?.workout?.isCompleted || false;
+        const hasDiet = log?.diet?.isCompleted || false;
+        const hasWater = log?.water?.isCompleted || false;
+        const isPerfect = hasWorkout && hasDiet && hasWater;
+
+        const isSelected = dateKey === selectedDateKey;
+        const isToday = dateKey === todayKey;
+
+        let cellClasses = 'h-12 rounded-xl flex flex-col items-center justify-center cursor-pointer quiet-transition relative select-none ';
+        if (isPerfect) {
+          cellClasses += 'perfect-day-cell ';
+        } else if (isSelected) {
+          cellClasses += 'bg-slate-900 text-white border border-slate-900 ';
+        } else {
+          cellClasses += 'bg-slate-50/70 hover:bg-slate-100 border border-transparent text-main ';
+        }
+
+        if (isSelected && isPerfect) {
+          cellClasses += 'ring-2 ring-emerald-500/40 ';
+        }
+
+        const dayTextClass = isSelected && !isPerfect
+          ? 'text-white font-bold'
+          : isToday
+            ? 'text-emerald-600 font-bold'
+            : 'text-main font-medium';
+
+        // 三色微型指示燈 (3-Dot Matrix, 直徑 4px = w-1 h-1)
+        const dotWorkoutColor = hasWorkout ? '#10B981' : '#E2E8F0';
+        const dotDietColor = hasDiet ? '#F59E0B' : '#E2E8F0';
+        const dotWaterColor = hasWater ? '#0EA5E9' : '#E2E8F0';
+
+        cellsHtml += `
+          <button type="button" onclick="selectDate('${dateKey}')" class="${cellClasses}">
+            <span class="text-xs ${dayTextClass} leading-none">${day}</span>
+            <div class="flex items-center gap-1 mt-1.5">
+              <span class="w-1 h-1 rounded-full" style="background-color: ${dotWorkoutColor};"></span>
+              <span class="w-1 h-1 rounded-full" style="background-color: ${dotDietColor};"></span>
+              <span class="w-1 h-1 rounded-full" style="background-color: ${dotWaterColor};"></span>
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = cellsHtml;
+      renderSelectedDateSummary();
+    }
+
+    function renderSelectedDateSummary() {
+      const log = ensureDayLog(selectedDateKey);
+      const [y, m, d] = selectedDateKey.split('-').map(Number);
+      const isToday = selectedDateKey === todayKey;
+
+      document.getElementById('selected-date-title').textContent =
+        `${m}月${d}日 ${isToday ? '(今日)' : '歷史紀錄'}`;
+
+      const jumpTodayBtn = document.getElementById('btn-jump-today');
+      if (isToday) {
+        jumpTodayBtn.classList.add('hidden');
+      } else {
+        jumpTodayBtn.classList.remove('hidden');
+      }
+
+      const perfectTag = document.getElementById('selected-date-perfect-tag');
+      if (log.isPerfectDay) {
+        perfectTag.classList.remove('hidden');
+      } else {
+        perfectTag.classList.add('hidden');
+      }
+
+      // 產生當日回顧文字
+      const trainedParts = log.workout.trainedCategories;
+      const workoutSummary = log.workout.isCompleted
+        ? `已完成 ${trainedParts.join('、')} 訓練 (${log.workout.completedVideoIds.length} 部影片)`
+        : '尚未完成運動打卡';
+
+      const totalDiet = appState.user.settings.defaultDietList.length;
+      const dietSummary = log.diet.isCompleted
+        ? `飲食清單全數達成 (${totalDiet}/${totalDiet})`
+        : `飲食完成 ${log.diet.checkedItems.length}/${totalDiet} 項`;
+
+      const waterSummary = log.water.isCompleted
+        ? `水分已達標 (${log.water.targetMl}ml)`
+        : `水分尚未達標`;
+
+      document.getElementById('selected-date-summary').innerHTML = `
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="flex items-center gap-1.5">
+            <i class="w-1.5 h-1.5 rounded-full ${log.workout.isCompleted ? 'bg-workout' : 'bg-slate-300'}"></i>
+            <span class="${log.workout.isCompleted ? 'text-main font-medium' : 'text-muted'}">${workoutSummary}</span>
+          </span>
+          <span class="text-slate-300">|</span>
+          <span class="flex items-center gap-1.5">
+            <i class="w-1.5 h-1.5 rounded-full ${log.diet.isCompleted ? 'bg-diet' : 'bg-slate-300'}"></i>
+            <span class="${log.diet.isCompleted ? 'text-main font-medium' : 'text-muted'}">${dietSummary}</span>
+          </span>
+          <span class="text-slate-300">|</span>
+          <span class="flex items-center gap-1.5">
+            <i class="w-1.5 h-1.5 rounded-full ${log.water.isCompleted ? 'bg-water' : 'bg-slate-300'}"></i>
+            <span class="${log.water.isCompleted ? 'text-main font-medium' : 'text-muted'}">${waterSummary}</span>
+          </span>
+        </div>
+      `;
+    }
+
+    function changeMonth(delta) {
+      currentCalendarMonth += delta;
+      if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear -= 1;
+      } else if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear += 1;
+      }
+      renderCalendar();
+      lucide.createIcons();
+    }
+
+    function selectDate(dateKey) {
+      selectedDateKey = dateKey;
+      const [y, m] = dateKey.split('-').map(Number);
+      currentCalendarYear = y;
+      currentCalendarMonth = m - 1;
+      renderAll();
+    }
+
+    function selectToday() {
+      selectDate(todayKey);
+    }
+
+    // ==========================================
+    // 3.2 健身部位與影片打卡渲染與操作
+    // ==========================================
+    function renderCategoryFilters() {
+      const bar = document.getElementById('category-filter-bar');
+      bar.innerHTML = ALL_CATEGORIES.map(cat => {
+        const active = cat === activeCategoryFilter;
+        return `
+          <button
+            type="button"
+            onclick="setCategoryFilter('${cat}')"
+            class="px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap quiet-transition ${
+              active
+                ? 'bg-main text-white shadow-sm'
+                : 'bg-slate-100 text-muted hover:text-main'
+            }"
+          >
+            ${cat}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function setCategoryFilter(cat) {
+      activeCategoryFilter = cat;
+      renderCategoryFilters();
+      renderVideoList();
+      lucide.createIcons();
+    }
+
+    function renderVideoList() {
+      const log = ensureDayLog(selectedDateKey);
+      const container = document.getElementById('video-list-container');
+      const workoutCard = document.getElementById('workout-card');
+      const statusBadge = document.getElementById('workout-status-badge');
+
+      if (log.workout.isCompleted) {
+        workoutCard.classList.add('subtle-glow-workout');
+        statusBadge.textContent = `已完成 ${log.workout.completedVideoIds.length} 部`;
+        statusBadge.className = 'text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full';
+      } else {
+        workoutCard.classList.remove('subtle-glow-workout');
+        statusBadge.textContent = '今日待打卡';
+        statusBadge.className = 'text-[11px] text-muted bg-slate-100 px-2 py-0.5 rounded-full';
+      }
+
+      const filteredVideos = activeCategoryFilter === '全部'
+        ? appState.videos
+        : appState.videos.filter(v => v.category === activeCategoryFilter);
+
+      if (filteredVideos.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-subtle">
+            <p class="text-xs text-muted">此部位尚無收藏的訓練影片</p>
+            <button onclick="openVideoModal('${activeCategoryFilter === '全部' ? '背' : activeCategoryFilter}')" class="mt-2 text-xs font-semibold text-emerald-600 hover:underline">
+              + 立即新增一部影片
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filteredVideos.map(video => {
+        const isChecked = log.workout.completedVideoIds.includes(video.id);
+        return `
+          <div class="p-3 rounded-xl border quiet-transition flex items-center justify-between gap-3 ${
+            isChecked
+              ? 'bg-emerald-50/40 border-emerald-300'
+              : 'bg-slate-50/60 border-subtle hover:border-slate-300'
+          }">
+            <!-- 左側：打勾方塊 + 影片資訊 -->
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+              <button
+                type="button"
+                onclick="toggleVideoCheck('${video.id}')"
+                class="w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 quiet-transition ${
+                  isChecked
+                    ? 'bg-workout border-workout text-white shadow-sm'
+                    : 'bg-white border-slate-300 hover:border-emerald-500 text-transparent'
+                }"
+                aria-label="打勾完成訓練"
+              >
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              </button>
+
+              <div class="min-w-0 flex-1 cursor-pointer" onclick="toggleVideoCheck('${video.id}')">
+                <p class="text-xs font-semibold truncate quiet-transition ${
+                  isChecked ? 'text-emerald-950 line-through decoration-emerald-500/60' : 'text-main'
+                }">
+                  ${escapeHtml(video.title)}
+                </p>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-md ${
+                    isChecked
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-slate-200/70 text-slate-700'
+                  }">
+                    ${escapeHtml(video.category)}
+                  </span>
+                  <span class="text-[11px] text-muted flex items-center gap-1">
+                    <i data-lucide="clock" class="w-3 h-3"></i>
+                    ${video.durationMin} 分鐘
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右側：外部連結按鈕 & 編輯/刪除 -->
+            <div class="flex items-center gap-1 shrink-0">
+              <a
+                href="${escapeHtml(video.externalUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="p-2 rounded-lg bg-white border border-subtle text-muted hover:text-emerald-600 hover:border-emerald-300 quiet-transition"
+                title="於新分頁開啟訓練影片"
+              >
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+              </a>
+              <button
+                type="button"
+                onclick="openVideoModal(null, '${video.id}')"
+                class="p-2 rounded-lg text-muted hover:text-main hover:bg-slate-100 quiet-transition"
+                title="編輯影片"
+              >
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              <button
+                type="button"
+                onclick="deleteVideo('${video.id}')"
+                class="p-2 rounded-lg text-muted hover:text-rose-600 hover:bg-rose-50 quiet-transition"
+                title="刪除影片"
+              >
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleVideoCheck(videoId) {
+      const log = ensureDayLog(selectedDateKey);
+      const idx = log.workout.completedVideoIds.indexOf(videoId);
+      if (idx === -1) {
+        log.workout.completedVideoIds.push(videoId);
+      } else {
+        log.workout.completedVideoIds.splice(idx, 1);
+      }
+      log.updatedAt = new Date().toISOString();
+
+      // 支援裝置微震動回饋 (Haptic Feedback)
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      ensureDayLog(selectedDateKey);
+      saveState();
+      renderAll();
+    }
+
+    // 影片新增 / 編輯 / 刪除
+    function openVideoModal(defaultCategory = null, editVideoId = null) {
+      const modal = document.getElementById('video-crud-modal');
+      const titleEl = document.getElementById('video-modal-title');
+      const idInput = document.getElementById('video-id-input');
+      const titleInput = document.getElementById('video-title-input');
+      const categoryInput = document.getElementById('video-category-input');
+      const durationInput = document.getElementById('video-duration-input');
+      const urlInput = document.getElementById('video-url-input');
+
+      if (editVideoId) {
+        const v = appState.videos.find(item => item.id === editVideoId);
+        if (!v) return;
+        titleEl.textContent = '編輯訓練影片';
+        idInput.value = v.id;
+        titleInput.value = v.title;
+        categoryInput.value = v.category;
+        durationInput.value = v.durationMin;
+        urlInput.value = v.externalUrl;
+      } else {
+        titleEl.textContent = '新增訓練影片';
+        idInput.value = '';
+        titleInput.value = '';
+        categoryInput.value = defaultCategory || '背';
+        durationInput.value = 20;
+        urlInput.value = 'https://www.youtube.com/watch?v=';
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeVideoModal() {
+      const modal = document.getElementById('video-crud-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveVideo(e) {
+      e.preventDefault();
+      const id = document.getElementById('video-id-input').value;
+      const title = document.getElementById('video-title-input').value.trim();
+      const category = document.getElementById('video-category-input').value;
+      const durationMin = Number(document.getElementById('video-duration-input').value) || 20;
+      const externalUrl = document.getElementById('video-url-input').value.trim();
+
+      if (!title || !externalUrl) return;
+
+      if (id) {
+        const idx = appState.videos.findIndex(v => v.id === id);
+        if (idx !== -1) {
+          appState.videos[idx] = {
+            ...appState.videos[idx],
+            title,
+            category,
+            durationMin,
+            externalUrl
+          };
+        }
+      } else {
+        appState.videos.unshift({
+          id: 'vid_' + Date.now(),
+          title,
+          category,
+          durationMin,
+          externalUrl,
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      ensureDayLog(selectedDateKey);
+      saveState();
+      closeVideoModal();
+      renderAll();
+    }
+
+    function deleteVideo(videoId) {
+      appState.videos = appState.videos.filter(v => v.id !== videoId);
+      Object.keys(appState.logs).forEach(k => ensureDayLog(k));
+      saveState();
+      renderAll();
+    }
+
+    // ==========================================
+    // 3.4 飲食與水分習慣追蹤 (Diet & Water)
+    // ==========================================
+    function renderDietSection() {
+      const log = ensureDayLog(selectedDateKey);
+      const dietList = appState.user.settings.defaultDietList;
+      const container = document.getElementById('diet-list-container');
+      const badge = document.getElementById('diet-progress-badge');
+      const card = document.getElementById('diet-card');
+
+      const checkedCount = log.diet.checkedItems.length;
+      const totalCount = dietList.length;
+
+      badge.textContent = `${checkedCount}/${totalCount} 完成`;
+      if (log.diet.isCompleted) {
+        card.classList.add('subtle-glow-diet');
+        badge.className = 'text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full quiet-transition';
+      } else {
+        card.classList.remove('subtle-glow-diet');
+        badge.className = 'text-xs font-medium text-muted bg-slate-100 px-2.5 py-0.5 rounded-full quiet-transition';
+      }
+
+      if (dietList.length === 0) {
+        container.innerHTML = `<p class="text-xs text-muted py-2">請於下方新增您的第一條飲食原則</p>`;
+        return;
+      }
+
+      container.innerHTML = dietList.map((item, index) => {
+        const isChecked = log.diet.checkedItems.includes(item);
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-xl border quiet-transition ${
+            isChecked
+              ? 'bg-amber-50/40 border-amber-300'
+              : 'bg-slate-50/60 border-subtle hover:border-slate-300'
+          }">
+            <button
+              type="button"
+              onclick="toggleDietItem(${index})"
+              class="flex items-center gap-3 flex-1 text-left"
+            >
+              <span class="w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 quiet-transition ${
+                isChecked
+                  ? 'bg-diet border-diet text-white shadow-sm'
+                  : 'bg-white border-slate-300'
+              }">
+                <i data-lucide="check" class="w-3.5 h-3.5 ${isChecked ? '' : 'opacity-0'}"></i>
+              </span>
+              <span class="text-xs font-medium ${
+                isChecked ? 'text-amber-950 line-through decoration-amber-500/60' : 'text-main'
+              }">
+                ${escapeHtml(item)}
+              </span>
+            </button>
+            <button
+              type="button"
+              onclick="removeDietTemplateItem(${index})"
+              class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg quiet-transition"
+              title="移除此飲食原則"
+            >
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleDietItem(index) {
+      const item = appState.user.settings.defaultDietList[index];
+      if (!item) return;
+
+      const log = ensureDayLog(selectedDateKey);
+      const pos = log.diet.checkedItems.indexOf(item);
+      if (pos === -1) {
+        log.diet.checkedItems.push(item);
+      } else {
+        log.diet.checkedItems.splice(pos, 1);
+      }
+      log.updatedAt = new Date().toISOString();
+
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      ensureDayLog(selectedDateKey);
+      saveState();
+      renderAll();
+    }
+
+    function handleAddDietItem(e) {
+      e.preventDefault();
+      const input = document.getElementById('new-diet-item-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      if (!appState.user.settings.defaultDietList.includes(val)) {
+        appState.user.settings.defaultDietList.push(val);
+      }
+      input.value = '';
+      ensureDayLog(selectedDateKey);
+      saveState();
+      renderAll();
+    }
+
+    function removeDietTemplateItem(index) {
+      appState.user.settings.defaultDietList.splice(index, 1);
+      Object.keys(appState.logs).forEach(k => ensureDayLog(k));
+      saveState();
+      renderAll();
+    }
+
+    // 水分追蹤
+    function renderWaterSection() {
+      const log = ensureDayLog(selectedDateKey);
+      const targetMl = appState.user.settings.waterTargetMl;
+      document.getElementById('water-target-display').textContent = targetMl;
+
+      const card = document.getElementById('water-card');
+      const btn = document.getElementById('btn-water-toggle');
+      const iconBox = document.getElementById('water-check-icon-box');
+      const title = document.getElementById('water-btn-title');
+      const subtitle = document.getElementById('water-btn-subtitle');
+      const pill = document.getElementById('water-status-pill');
+
+      title.textContent = `今日水分已達標（${targetMl}ml）`;
+
+      if (log.water.isCompleted) {
+        card.classList.add('subtle-glow-water');
+        btn.className = 'w-full py-3.5 px-4 rounded-xl border border-sky-300 bg-sky-50/50 flex items-center justify-between quiet-transition';
+        iconBox.className = 'w-6 h-6 rounded-lg bg-water border border-water flex items-center justify-center text-white shadow-sm quiet-transition';
+        iconBox.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>`;
+        subtitle.textContent = '已完成今日水分補給目標';
+        pill.textContent = '已達標';
+        pill.className = 'text-xs font-semibold text-sky-700 bg-white border border-sky-200 px-2.5 py-1 rounded-lg quiet-transition';
+      } else {
+        card.classList.remove('subtle-glow-water');
+        btn.className = 'w-full py-3.5 px-4 rounded-xl border border-subtle bg-slate-50/70 hover:bg-sky-50/40 flex items-center justify-between quiet-transition';
+        iconBox.className = 'w-6 h-6 rounded-lg border border-slate-300 bg-white flex items-center justify-center quiet-transition';
+        iconBox.innerHTML = `<i data-lucide="droplets" class="w-3.5 h-3.5 text-sky-500"></i>`;
+        subtitle.textContent = '點擊一鍵完成今日飲水打卡';
+        pill.textContent = '待達成';
+        pill.className = 'text-xs font-medium text-muted bg-white border border-subtle px-2.5 py-1 rounded-lg quiet-transition';
+      }
+    }
+
+    function toggleWaterCheck() {
+      const log = ensureDayLog(selectedDateKey);
+      log.water.isCompleted = !log.water.isCompleted;
+      log.water.targetMl = appState.user.settings.waterTargetMl;
+      log.updatedAt = new Date().toISOString();
+
+      if (navigator.vibrate) navigator.vibrate(15);
+
+      ensureDayLog(selectedDateKey);
+      saveState();
+      renderAll();
+    }
+
+    // ==========================================
+    // 3.1 每日專注提醒彈窗 (Daily Focus Modal)
+    // ==========================================
+    function renderDailyFocusModalContent() {
+      const todayLog = ensureDayLog(todayKey);
+      const [y, m, d] = todayKey.split('-').map(Number);
+
+      document.getElementById('modal-today-date').textContent = `${y}年${m}月${d}日 • 今日專注`;
+      document.getElementById('modal-focus-slogan').textContent = appState.user.settings.focusSlogan;
+
+      const completedCount =
+        (todayLog.workout.isCompleted ? 1 : 0) +
+        (todayLog.diet.isCompleted ? 1 : 0) +
+        (todayLog.water.isCompleted ? 1 : 0);
+
+      document.getElementById('modal-progress-fraction').textContent = `${completedCount} / 3 完成`;
+
+      // 頂部提醒小紅點指示：若今日尚未全部完成則顯示
+      const badgeDot = document.getElementById('focus-badge-dot');
+      if (completedCount < 3) {
+        badgeDot.classList.remove('hidden');
+      } else {
+        badgeDot.classList.add('hidden');
+      }
+
+      // 更新三顆膠囊狀態
+      const updateModalPill = (id, dotId, done, activeColorHex) => {
+        const pill = document.getElementById(id);
+        const dot = document.getElementById(dotId);
+        if (done) {
+          pill.className = 'flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white border border-slate-300 text-xs font-semibold text-main shadow-sm';
+          dot.style.backgroundColor = activeColorHex;
+        } else {
+          pill.className = 'flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-white border border-subtle text-xs text-muted';
+          dot.style.backgroundColor = '#CBD5E1';
+        }
+      };
+
+      updateModalPill('modal-pill-workout', 'modal-dot-workout', todayLog.workout.isCompleted, '#10B981');
+      updateModalPill('modal-pill-diet', 'modal-dot-diet', todayLog.diet.isCompleted, '#F59E0B');
+      updateModalPill('modal-pill-water', 'modal-dot-water', todayLog.water.isCompleted, '#0EA5E9');
+
+      // 預排影片清單預覽 (取前 3 部)
+      const previewList = document.getElementById('modal-video-preview-list');
+      const previewVideos = appState.videos.slice(0, 3);
+      previewList.innerHTML = previewVideos.map(v => {
+        const isDone = todayLog.workout.completedVideoIds.includes(v.id);
+        return `
+          <div class="flex items-center justify-between text-xs bg-slate-50 px-3 py-2 rounded-xl border border-subtle">
+            <div class="flex items-center gap-2 truncate pr-2">
+              <span class="w-1.5 h-1.5 rounded-full ${isDone ? 'bg-workout' : 'bg-slate-300'}"></span>
+              <span class="truncate font-medium text-main">${escapeHtml(v.title)}</span>
+            </div>
+            <span class="text-[10px] text-muted shrink-0">${v.category} • ${v.durationMin}m</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openFocusModal() {
+      renderDailyFocusModalContent();
+      const modal = document.getElementById('daily-focus-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function dismissFocusModal() {
+      sessionStorage.setItem(FOCUS_DISMISSED_KEY, 'true');
+      const modal = document.getElementById('daily-focus-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function startTodayWorkoutFromModal() {
+      dismissFocusModal();
+      selectToday();
+      const anchor = document.getElementById('checkin-section-anchor');
+      if (anchor) {
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    // ==========================================
+    // 個人設定彈窗 (Settings Modal)
+    // ==========================================
+    function openSettingsModal() {
+      document.getElementById('setting-name-input').value = appState.user.profile.displayName;
+      document.getElementById('setting-water-input').value = appState.user.settings.waterTargetMl;
+      document.getElementById('setting-focus-input').value = appState.user.settings.focusSlogan;
+
+      const modal = document.getElementById('settings-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('settings-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleSaveSettings(e) {
+      e.preventDefault();
+      const name = document.getElementById('setting-name-input').value.trim();
+      const water = Number(document.getElementById('setting-water-input').value) || 2000;
+      const slogan = document.getElementById('setting-focus-input').value.trim();
+
+      if (name) appState.user.profile.displayName = name;
+      appState.user.settings.waterTargetMl = water;
+      if (slogan) appState.user.settings.focusSlogan = slogan;
+
+      ensureDayLog(selectedDateKey);
+      saveState();
+      closeSettingsModal();
+      renderAll();
+    }
+
+    function resetDemoData() {
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(FOCUS_DISMISSED_KEY);
+      appState = getDefaultState();
+      selectedDateKey = todayKey;
+      renderAll();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // 總渲染函式
+    function renderAll() {
+      document.getElementById('user-display-name').textContent = appState.user.profile.displayName;
+      ensureDayLog(selectedDateKey);
+      renderWeeklyMuscleBalance();
+      renderCalendar();
+      renderCategoryFilters();
+      renderVideoList();
+      renderDietSection();
+      renderWaterSection();
+      renderDailyFocusModalContent();
+      lucide.createIcons();
+    }
+
+    // 初始化啟動
+    window.addEventListener('DOMContentLoaded', () => {
+      renderAll();
+
+      // 3.1 每日首次開啟應用程式且尚有未完成項目時，自動彈出每日專注提醒
+      const todayLog = ensureDayLog(todayKey);
+      const isDismissedInSession = sessionStorage.getItem(FOCUS_DISMISSED_KEY) === 'true';
+      if (!todayLog.isPerfectDay && !isDismissedInSession) {
+        openFocusModal();
+      }
+    });
+  </script>
+</body>
+</html>
